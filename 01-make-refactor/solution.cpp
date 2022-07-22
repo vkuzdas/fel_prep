@@ -8,8 +8,7 @@ using namespace std;
 //
 
 const regex firstLineMatch ("^([a-zA-Z]*)(: )([a-zA-Z]*)$");
-const regex depToDepMatch1 (R"(^([\w.]*)(: )([\w.]*)( )([\w.]*))");
-const regex depToDepMatch2 (R"(^([\w.]*): ([\w.]*) ([\w.]*))");
+const regex depToDepMatch (R"(^([\w.]*): ([\w.]*) ([\w.]*))");
 // TODO: if there are more than two files after ":", make two regexes
 const regex codeMatch ("^([a-zA-Z0-9.]*):$");
 
@@ -20,29 +19,54 @@ const int CLOSED = 2;
 // TODO: consider unordered_map<vertex_type,unordered_set<vertex_type>>
 
 
+void graphFromInput(vector<vector<int>> &adj, deque<string> &dict);
+
 int main() {
-    string line;
-    smatch matches;
     vector<vector<int>> adj;   // edges and neighbours as ints
     deque<string> dict;        // string to num conversion
-    int depLinesNr = 0;        // each line contains "root" dep
-    int depOrder = 0;
 
-    while (getline(cin, line)) {
-        if (regex_match(line, matches, depToDepMatch2)) {
-            for (unsigned int i = 1; i < matches.size(); ++i) {
+    graphFromInput(adj, dict);
+
+    return 0;
+}
+
+void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
+    int rootAdjIndex = 0;      // each line contains "root" dep
+    int depDictIndex = 0;
+    string line;
+    smatch matches;
+
+    while (getline(cin, line)) { // stream file
+        if (regex_match(line, matches, depToDepMatch)) { // input is of format [dep1: dep2 dep3]
+            for (unsigned int i = 1; i < matches.size(); ++i) {   // submatch loop (first match is the whole match)
                 string dep = matches[i].str();
-                // add to dict if missing
-                if( !(std::find(dict.begin(), dict.end(), dep) != dict.end()) ){
-                    dict.insert(dict.begin() + depOrder, dep);
-                    depOrder = depOrder + 1;
+                auto depDictFoundPosition = std::find(dict.begin(), dict.end(), dep);
+
+                if (i==1) { // the node is root
+                    rootAdjIndex = depDictIndex;
+                    if( depDictFoundPosition != dict.end() ) { // root node in dict
+                        depDictIndex++;
+                    } else { // root node not in dict
+                        adj.emplace_back();
+                        dict.insert(dict.begin() + depDictIndex, dep);
+                        depDictIndex++;
+                    }
                 }
-                // insert into adj
-                adj[depLinesNr].push_back(depOrder);
+                else {
+                    if( depDictFoundPosition != dict.end() ) { // subnode in dict
+                        adj[rootAdjIndex].push_back(int(depDictFoundPosition-dict.begin()));
+                        // no increment because the node was already added to dict
+                    } else { // subnode not in dict
+                        adj.emplace_back();
+                        dict.insert(dict.begin() + depDictIndex, dep);
+                        adj[rootAdjIndex].push_back(depDictIndex);
+                        depDictIndex++;
+                    }
+                }
+
             }
         }
     }
-    return 0;
 }
 
 
