@@ -8,7 +8,7 @@ using namespace std;
 //
 
 const regex firstLineMatch ("^([a-zA-Z]*)(: )([a-zA-Z]*)$");
-const regex depToDepMatch (R"(^([\w.]*): ([\w.]*) ([\w.]*))");
+const regex DEP_TO_DEP (R"(^([\w.]*): ([\w.]*) ([\w.]*))");
 // TODO: if there are more than two files after ":", make two regexes
 const regex codeMatch ("^([a-zA-Z0-9.]*):$");
 
@@ -31,26 +31,24 @@ int main() {
 }
 
 void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
-    int rootAdjIndex = 0;      // each line contains "root" dep
+    int rootAdjIndex = 0;
     int depDictIndex = 0;
     string line;
     smatch matches;
 
     while (getline(cin, line)) { // stream file
-        if (regex_match(line, matches, depToDepMatch)) { // input is of format [dep1: dep2 dep3]
-            for (unsigned int i = 1; i < matches.size(); ++i) {   // submatch loop (first match is the whole match)
+        if (regex_match(line, matches, DEP_TO_DEP)) { // input is of format [dep1: dep2 dep3]
+            for (int i = 1; i < matches.size(); ++i) {   // submatch loop (first match is the whole match)
                 string dep = matches[i].str();
                 auto depDictFoundPosition = std::find(dict.begin(), dict.end(), dep);
 
                 if (i==1) { // the node is root
                     rootAdjIndex = depDictIndex;
-                    if( depDictFoundPosition != dict.end() ) { // root node in dict
-                        depDictIndex++;
-                    } else { // root node not in dict
+                    if( !(depDictFoundPosition != dict.end()) ) { // root node not in dict
                         adj.emplace_back();
                         dict.insert(dict.begin() + depDictIndex, dep);
-                        depDictIndex++;
                     }
+                    depDictIndex++;
                 }
                 else {
                     if( depDictFoundPosition != dict.end() ) { // subnode in dict
