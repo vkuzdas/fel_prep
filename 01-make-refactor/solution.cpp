@@ -22,16 +22,51 @@ const int CLOSED = 2;
 
 
 void graphFromInput(vector<vector<int>> &adj, deque<string> &dict);
-void scratchFunction1();
+void dfsCheckConnectivity(vector<vector<int>> &adj);
+template<typename Container, typename Primitive>
+int contains(Container& c, Primitive e);
 
 int main() {
     vector<vector<int>> adj;   // edges and neighbours as ints
     deque<string> dict;        // string to num conversion
 
     graphFromInput(adj, dict);
+    dfsCheckConnectivity(adj);
 
     return 0;
 }
+
+template<typename Container, typename Primitive>
+int contains(Container& c, Primitive e) {
+    if(c.empty()) {
+        return -1;
+    }
+    auto iter = std::find(c.begin(), c.end(), e);
+    if(iter != c.end()) {
+        return int(iter-c.begin());
+    }
+    else {
+        return -1;
+    }
+}
+
+void dfsCheckConnectivity(vector<vector<int>> &adj) {
+    vector<int> visited;
+    stack<int> toVisit;
+    toVisit.push(0);
+    while (!toVisit.empty()) {
+        int curr = toVisit.top();
+        toVisit.pop();
+        cout << curr;
+        if(contains(visited, curr) == -1) {
+            visited.push_back(curr);
+            for (int neighbor : adj[curr]) {
+                toVisit.push(neighbor);
+            }
+        }
+    }
+}
+
 
 void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
     int rootAdjIndex = 0;
@@ -62,11 +97,11 @@ void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
         else if (regex_match(line, matches, DEP_TO_DEP)) { // input is of format [dep1: dep2 dep3]
             for (int i = 1; i < matches.size(); ++i) {   // submatch loop (first match is the whole match)
                 string dep = matches[i].str();
-                auto depDictFoundPosition = std::find(dict.begin(), dict.end(), dep);
+                auto depDictFoundPosition = contains(dict, dep);
 
                 if (i==1) { // the node is root
-                    if (depDictFoundPosition != dict.end()) { // root node in dict
-                        rootAdjIndex = int(depDictFoundPosition - dict.begin());
+                    if (depDictFoundPosition != -1) { // root node in dict
+                        rootAdjIndex = depDictFoundPosition;
                     }
                     else { // root node not in dict
                         adj.emplace_back();
@@ -76,8 +111,8 @@ void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
                     }
                 }
                 else {
-                    if( depDictFoundPosition != dict.end() ) { // subnode in dict
-                        adj[rootAdjIndex].push_back(int(depDictFoundPosition-dict.begin()));
+                    if( depDictFoundPosition != -1 ) { // subnode in dict
+                        adj[rootAdjIndex].push_back(depDictFoundPosition);
                         // no increment because the node was already added to dict
                     } else { // subnode not in dict
                         adj.emplace_back();
