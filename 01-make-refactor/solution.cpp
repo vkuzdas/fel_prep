@@ -10,28 +10,54 @@ using namespace std;
 const regex SECOND_LINE (R"(^([\w]*):)");
 const regex THIRD_LINE ("^\tg\\+\\+ ([\\w.]*) ([\\w.]*) -o [\\w.]*$");
 const regex DEP_TO_DEP (R"(^([\w.]*): ([\w.]*) ([\w.]*))");
+const regex FILE_LINE (R"(^([\w]*\.[\w]*):)");
+const regex CODE_LINE ("^\techo.+");
 // TODO: if there are more than two files after ":", make two regexes
 
 const regex codeMatch ("^([a-zA-Z0-9.]*):$");
 
-const int FRESH = 0;
-const int OPEN = 1;
-const int CLOSED = 2;
 
 // TODO: consider unordered_map<vertex_type,unordered_set<vertex_type>>
 
 
-void graphFromInput(vector<vector<int>> &adj, deque<string> &dict);
-void dfsCheckConnectivity(vector<vector<int>> &adj);
+string graphFromInput(vector<vector<int>> &adj, vector<string> &dict);
+vector<int> dfsCheckConnectivity(vector<vector<int>> &adj);
 template<typename Container, typename Primitive>
 int contains(Container& c, Primitive e);
 
 int main() {
     vector<vector<int>> adj;   // edges and neighbours as ints
-    deque<string> dict;        // string to num conversion
+    vector<string> dict;        // string to num conversion
 
-    graphFromInput(adj, dict);
-    dfsCheckConnectivity(adj);
+    string lastLine = graphFromInput(adj, dict); // returns last readable line (after all deps)
+    vector<int> visitable = dfsCheckConnectivity(adj);
+
+    smatch matches;
+
+    bool eraseFollowingLine = false;
+    while(true) {
+        if(regex_match(lastLine, matches, FILE_LINE)) {
+            // is line visitable?
+            string file = matches[1].str();
+            auto index = int(distance(dict.begin(), find(dict.begin(), dict.end(), file)));
+            if(contains(visitable, index) == -1) { // if file cannot be visited comment it out
+                cout << "#" << lastLine << "\n";
+                eraseFollowingLine = true;
+            }
+            else {
+                cout << lastLine << "\n";
+                eraseFollowingLine = false;
+            }
+        }
+        else if(regex_match(lastLine, matches, CODE_LINE) && eraseFollowingLine) {
+            cout << "#" << lastLine << "\n";
+        }
+        else if(regex_match(lastLine, matches, CODE_LINE) && !eraseFollowingLine) {
+            cout << lastLine << "\n";
+        }
+
+        if(!getline(cin, lastLine)) break;
+    }
 
     return 0;
 }
@@ -50,14 +76,13 @@ int contains(Container& c, Primitive e) {
     }
 }
 
-void dfsCheckConnectivity(vector<vector<int>> &adj) {
+vector<int> dfsCheckConnectivity(vector<vector<int>> &adj) {
     vector<int> visited;
     stack<int> toVisit;
     toVisit.push(0);
     while (!toVisit.empty()) {
         int curr = toVisit.top();
         toVisit.pop();
-        cout << curr;
         if(contains(visited, curr) == -1) {
             visited.push_back(curr);
             for (int neighbor : adj[curr]) {
@@ -65,16 +90,18 @@ void dfsCheckConnectivity(vector<vector<int>> &adj) {
             }
         }
     }
+    return visited;
 }
 
 
-void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
+string graphFromInput(vector<vector<int>> &adj, vector<string> &dict) {
     int rootAdjIndex = 0;
     int depDictIndex = 0;
     string line;
     smatch matches;
 
     while (getline(cin, line)) { // stream file
+        cout << line << "\n";
         if (regex_match(line, matches, SECOND_LINE)) {
             // node is root and is not in dict
             string firstTarget = matches[1].str();
@@ -121,10 +148,13 @@ void graphFromInput(vector<vector<int>> &adj, deque<string> &dict) {
                         depDictIndex++;
                     }
                 }
-
             }
         }
+        else if (regex_match(line, matches, FILE_LINE)) {
+            return line;
+        }
     }
+    return ""; // pretty much guaranteed it returns "dep.cpp"
 }
 
 
